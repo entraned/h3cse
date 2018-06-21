@@ -1,0 +1,243 @@
+<html>
+
+<head>
+    <title>exam</title>
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+
+        .checked {
+            background-color: rgb(152, 172, 196);
+        }
+
+        #app {
+            width: 50%;
+            margin: 0 auto;
+        }
+
+        .buttonWrap {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div v-cloak id="app">
+        <div v-if="!started" class="buttonWrap">
+            <button @click="random">随机生成考题</button>
+            <button @click="started = true">考试</button>
+        </div>
+        <template v-else>
+            <div class="buttonWrap">
+                <span v-if="!result && !wrong">
+                    {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time % 60)}}
+                </span>
+                <span v-else>
+                    答题完毕
+                    <div id="last" style="width:100%;height:400px;"></div>
+                    <div v-for="i in analyse">
+                        {{i.time}}:{{i.score}}
+                    </div>
+                </span>
+            </div>
+            <div v-if="result" class="buttonWrap">
+                总得分 {{score}}
+                <button @click="reset">重新考试</button>
+                <button @click="random">随机生成考题</button>
+                <button @click="showWrong">查看错题</button>
+            </div>
+            <div v-if="wrong">
+                总得分 {{score}}
+                <div v-for="(item,index) in obj" v-if="item.sl !== item.ans">
+                    <hr>
+                    <span>{{item.index}}</span>
+                    <div v-html="item.qes"></div>
+                    <div v-for="i in item.options">
+                        <div v-html="i.innerHTML" :class="item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
+                    </div>
+                </div>
+                <button @click="reset">重新考试</button>
+            </div>
+            <template v-if="!result && !wrong">
+                <div v-html="obj[current].qes"></div>
+                <div v-for="i in obj[current].options">
+                    <div v-html="i.innerHTML" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
+                </div>
+            </template>
+        </template>
+    </div>
+    <iframe src="" id="exam1" onload="loaded()" style="display: none;"></iframe>
+    <script src="./stat.js" language="JavaScript"></script>
+    <script src="./exam1.js" language="JavaScript"></script>
+    <script src="./vue.js" language="JavaScript"></script>
+    <script src="./localforage.min.js" language="JavaScript"></script>
+    <script src="echarts.min.js"></script>
+    <script>
+        let app, exam;
+        document.onkeyup = function (evt) {
+            // console.log(evt.keyCode)
+            switch (evt.keyCode) {
+                case (37):
+                case (38):
+                    app.current = app.current === 0 ? app.current : app.current - 1;
+                    break;
+                case (13):
+                case (39):
+                case (40):
+                    if (app.obj[app.current].sl !== '') {
+                        app.current = app.current === app.obj.length - 1 ? app.current : app.current + 1;
+                        if (app.current === app.obj.length - 1) {
+                            app.showResult();
+                        }
+                    }
+                    break;
+                case (97):
+                case (49):
+                    choose(0, 'A')
+                    break;
+                case (98):
+                case (50):
+                    choose(1, 'B')
+                    break;
+                case (99):
+                case (51):
+                    choose(2, 'C')
+                    break;
+                case (100):
+                case (52):
+                    choose(4, 'D')
+                    break;
+                case (101):
+                case (53):
+                    choose(5, 'E')
+                    break;
+                case (102):
+                case (54):
+                    choose(6, 'F')
+                    break;
+                case (103):
+                case (55):
+                    choose(7, 'G')
+                    break;
+                case (104):
+                case (56):
+                    choose(8, 'H')
+                    break;
+                case (105):
+                case (57):
+                    choose(9, 'I')
+                    break;
+                default:
+                    break;
+            }
+        }
+        function loaded() {
+            exam = new Exam(document.getElementById("exam1").contentWindow.document.body);
+
+            app = new Vue({
+                el: '#app',
+                data: {
+                    current: 0,
+                    time: 2 * 60 * 60,
+                    obj: exam.obj,
+                    score: 0,
+                    result: false,
+                    wrong: false,
+                    interval: null,
+                    analyse: [],
+                    started: false
+                },
+                methods: {
+                    reset() {
+                        exam = new Exam(document.getElementById("exam1").contentWindow.document.body);
+                        this.current = 0;
+                        this.time = 2 * 60 * 60;
+                        this.obj = exam.obj;
+                        this.score = 0;
+                        this.result = false;
+                        this.wrong = false;
+                        this.interval = this.countDown();
+                    },
+                    showResult() {
+                        this.result = true;
+                        clearInterval(this.interval);
+                        this.score = exam.score(20);
+                        localforage.getItem('analyse').then(val => {
+                            if (val) {
+                                val.push({ time: format(new Date()), score: this.score })
+                                localforage.setItem('analyse', val);
+                            } else {
+                                localforage.setItem('analyse', [{ time: format(new Date()), score: this.score }]);
+                            }
+                        });
+                        setTimeout(() => {
+                            localforage.getItem('analyse').then(val => {
+                                this.analyse = val;
+                            });
+                        }, 500);
+                    },
+                    showWrong() {
+                        this.wrong = true;
+                        this.result = false;
+                    },
+                    countDown() {
+                        return setInterval(() => {
+                            if (this.time <= 0) {
+                                clearInterval(this.interval);
+                                this.showResult();
+                            } else {
+                                this.time--
+                            }
+                        }, 1000)
+                    },
+                    random() {
+                        this.started = true;
+                        this.obj.shuffle();
+                    }
+                },
+                watch: {
+                },
+                mounted() {
+                    this.interval = this.countDown()
+                }
+            });
+        }
+        function choose(len, num) {
+            if (app.obj[app.current].options && app.obj[app.current].options.length >= len) {
+                let index = app.obj[app.current].sl.indexOf(num);
+                app.obj[app.current].sl = index > -1 ? app.obj[app.current].sl.replace(num, '') : app.obj[app.current].sl + num;
+            }
+        }
+        function format(date) {
+            var week = ""
+            switch (date.getDay()) {
+                case 0: week = "周日"; break
+                case 1: week = "周一"; break
+                case 2: week = "周二"; break
+                case 3: week = "周三"; break
+                case 4: week = "周四"; break
+                case 5: week = "周五"; break
+                case 6: week = "周六"; break
+            }
+            date = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + "/" + week + ' ' + (date.getHours() >= 10 ? date.getHours() : '0' + date.getHours()) + ':' + (date.getMinutes() >= 10 ? date.getMinutes() : '0' + date.getMinutes()) + ':' + (date.getSeconds() >= 10 ? date.getSeconds() : '0' + date.getSeconds())
+
+            return date
+        }
+        Array.prototype.shuffle = function () {
+            var arr = this;
+            for (var i = arr.length - 1; i >= 0; i--) {
+                var randomIndex = Math.floor(Math.random() * (i + 1));
+                var itemAtIndex = arr[randomIndex];
+
+                arr[randomIndex] = arr[i];
+                arr[i] = itemAtIndex;
+            }
+            return arr;
+        }
+        document.getElementById("exam1").src = location.href + "exam1.html";
+
+    </script>
+</body>
+
+</html>
