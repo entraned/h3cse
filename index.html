@@ -2,6 +2,7 @@
 
 <head>
     <title>exam</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
         [v-cloak] {
             display: none;
@@ -9,6 +10,11 @@
 
         .checked {
             background-color: rgb(152, 172, 196);
+        }
+
+        .rightAns {
+            box-shadow: 1px 1px 1px 1px #666;
+            border-radius: 3px;
         }
 
         #app {
@@ -24,51 +30,45 @@
 
 <body>
     <div v-cloak id="app">
-        <div v-if="!started" class="buttonWrap">
+        <div v-show="scene===0 || scene === 2" id="chart" style="width:100%;height:400px;"></div>
+        <div v-show="scene === 0" class="buttonWrap">
             <button @click="random">随机生成考题</button>
-            <button @click="started = true">考试</button>
+            <button @click="scene = 1">考试</button>
+            <select v-if="obj.length >= 50" v-model="range">
+                <option v-for="i in Math.floor(obj.length / 50)" :value="i * 50">{{i * 50}}</option>
+                <option value="obj.length">全部</option>
+            </select>
         </div>
-        <template v-else>
+        <div v-if="scene===2" class="buttonWrap">
+            总得分 {{score}}
+            <button @click="reset">重新考试</button>
+            <button @click="random">随机生成考题</button>
+            <button @click="showWrong">查看错题</button>
+        </div>
+        <div v-if="scene===3">
+            总得分 {{score}}
+            <div v-for="(item,index) in obj" v-if="item.sl !== item.ans">
+                <hr>
+                <span>{{item.index}}</span>
+                <div v-html="item.qes"></div>
+                <div v-for="i in item.options">
+                    <div v-html="i.innerHTML" :class="{checked:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,rightAns:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
+                </div>
+            </div>
+            <button @click="reset">重新考试</button>
+        </div>
+        <template v-if="scene === 1">
             <div class="buttonWrap">
-                <span v-if="!result && !wrong">
-                    {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time % 60)}}
-                </span>
-                <span v-else>
-                    答题完毕
-                    <div id="last" style="width:100%;height:400px;"></div>
-                    <div v-for="i in analyse">
-                        {{i.time}}:{{i.score}}
-                    </div>
-                </span>
+                {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time % 60)}}
             </div>
-            <div v-if="result" class="buttonWrap">
-                总得分 {{score}}
-                <button @click="reset">重新考试</button>
-                <button @click="random">随机生成考题</button>
-                <button @click="showWrong">查看错题</button>
+            <div v-html="obj[current].qes"></div>
+            <div v-for="i in obj[current].options">
+                <div v-html="i.innerHTML" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
             </div>
-            <div v-if="wrong">
-                总得分 {{score}}
-                <div v-for="(item,index) in obj" v-if="item.sl !== item.ans">
-                    <hr>
-                    <span>{{item.index}}</span>
-                    <div v-html="item.qes"></div>
-                    <div v-for="i in item.options">
-                        <div v-html="i.innerHTML" :class="item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
-                    </div>
-                </div>
-                <button @click="reset">重新考试</button>
-            </div>
-            <template v-if="!result && !wrong">
-                <div v-html="obj[current].qes"></div>
-                <div v-for="i in obj[current].options">
-                    <div v-html="i.innerHTML" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
-                </div>
-            </template>
         </template>
     </div>
-    <iframe src="" id="exam1" onload="loaded()" style="display: none;"></iframe>
-    <script src="./exam1.js" language="JavaScript"></script>
+    <iframe src="" id="exam" onload="loaded()" style="display: none;"></iframe>
+    <script src="./exam.js" language="JavaScript"></script>
     <script src="./vue.js" language="JavaScript"></script>
     <script src="./localforage.min.js" language="JavaScript"></script>
     <script src="echarts.min.js"></script>
@@ -85,8 +85,8 @@
                 case (39):
                 case (40):
                     if (app.obj[app.current].sl !== '') {
-                        app.current = app.current === app.obj.length - 1 ? app.current : app.current + 1;
-                        if (app.current === app.obj.length - 1) {
+                        app.current++;
+                        if (app.current === app.obj.length) {
                             app.showResult();
                         }
                     }
@@ -132,53 +132,133 @@
             }
         }
         function loaded() {
-            exam = new Exam(document.getElementById("exam1").contentWindow.document.body);
-
+            exam = new Exam(document.getElementById("exam").contentWindow.document.body);
             app = new Vue({
                 el: '#app',
                 data: {
+                    scene: 0,
                     current: 0,
                     time: 2 * 60 * 60,
                     obj: exam.obj,
                     score: 0,
-                    result: false,
-                    wrong: false,
+                    per: 20,
                     interval: null,
-                    analyse: [],
-                    started: false
+                    range: 50,
+                    op: {
+                        tooltip: {
+                            trigger: "axis"
+                        },
+                        grid: {
+                            x: 50
+                        },
+                        legend: {
+                            data: [
+                                "score"
+                            ]
+                        },
+                        xAxis: [
+                            {
+                                type: "category",
+                                data: [],
+                                axisLine: {
+                                    onZero: false,
+                                    show: false
+                                },
+                                axisLabel: {
+                                    show: true,
+                                    rotate: 30
+                                },
+                                axisTick: {
+                                    show: false
+                                },
+                                splitLine: {
+                                    show: false
+                                },
+                                splitArea: {
+                                    show: true
+                                }
+                            }
+                        ],
+                        yAxis: [
+                            {
+                                type: "value",
+                                splitLine: {
+                                    show: false
+                                },
+                                axisLine: {
+                                    show: false
+                                },
+                                splitArea: {
+                                    show: false
+                                }
+                            }
+                        ],
+                        series: [
+                            {
+                                name: "score",
+                                type: "line",
+                                data: [],
+                                itemStyle: {
+                                    normal: {
+                                        borderRadius: 10,
+                                        color: "rgb(57, 178, 169)"
+                                    }
+                                },
+                                markLine: {
+                                    symbol: 'circle',
+                                    symbolSize: 0,
+                                    lineStyle: {
+                                        type: 'solid',
+                                        color: '#000'
+                                    },
+                                    animation: false,
+                                    data: [
+                                        {
+                                            name: 'required',
+                                            itemStyle: {
+                                                normal: {
+                                                    show: true,
+                                                    color: '#4c5336'
+                                                }
+                                            },
+                                            yAxis: 0
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
                 },
                 methods: {
-                    reset() {
-                        exam = new Exam(document.getElementById("exam1").contentWindow.document.body);
+                    reset(random) {
+                        if (random !== true) {
+                            exam = new Exam(document.getElementById("exam").contentWindow.document.body);
+                            this.obj = exam.obj;
+                        }
                         this.current = 0;
                         this.time = 2 * 60 * 60;
-                        this.obj = exam.obj;
                         this.score = 0;
-                        this.result = false;
-                        this.wrong = false;
+                        this.scene = 1;
                         this.interval = this.countDown();
                     },
                     showResult() {
-                        this.result = true;
+                        this.scene = 2;
                         clearInterval(this.interval);
-                        this.score = exam.score(20);
+                        this.score = exam.score(this.per);
                         localforage.getItem('analyse').then(val => {
                             if (val) {
-                                val.push({ time: format(new Date()), score: this.score })
+                                val.push({ time: format(new Date()), score: this.score, count: exam.score() })
                                 localforage.setItem('analyse', val);
                             } else {
-                                localforage.setItem('analyse', [{ time: format(new Date()), score: this.score }]);
+                                localforage.setItem('analyse', [{ time: format(new Date()), score: this.score, count: exam.score() }]);
                             }
                         });
                         setTimeout(() => {
-                            localforage.getItem('analyse').then(val => {
-                                this.analyse = val;
-                            });
-                        }, 500);
+                            this.setChart();
+                        }, 1000);
                     },
                     showWrong() {
-                        this.wrong = true;
-                        this.result = false;
+                        this.scene = 3;
                     },
                     countDown() {
                         return setInterval(() => {
@@ -191,19 +271,38 @@
                         }, 1000)
                     },
                     random() {
-                        this.started = true;
-                        this.obj.shuffle();
+                        this.scene = 1;
+                        this.reset(true);
+                        let obj = new Exam(document.getElementById("exam").contentWindow.document.body).obj;
+                        this.obj = obj.shuffle().splice(0, obj.length >= 50 ? this.range : obj.length);
+                    },
+                    setChart() {
+                        localforage.getItem('analyse').then(val => {
+                            if (val) {
+                                this.op.xAxis[0].data = [];
+                                this.op.series[0].data = [];
+                                val.forEach(el => {
+                                    this.op.xAxis[0].data.push(el.time)
+                                    this.op.series[0].data.push(el.count)
+                                });
+                                this.op.series[0].markLine.data[0].yAxis = this.obj.length * this.per * 0.6;
+                                this.op.yAxis[0].max = this.obj.length;
+                                echarts.init(document.getElementById('chart')).setOption(this.op)
+                            }
+                        });
                     }
                 },
                 watch: {
                 },
                 mounted() {
                     this.interval = this.countDown()
+                    this.setChart();
+                    console.log(this.obj)
                 }
             });
         }
         function choose(len, num) {
-            if (app.obj[app.current].options && app.obj[app.current].options.length >= len) {
+            if (app.scene === 1 && app.obj[app.current].options && app.obj[app.current].options.length >= len) {
                 let index = app.obj[app.current].sl.indexOf(num);
                 app.obj[app.current].sl = index > -1 ? app.obj[app.current].sl.replace(num, '') : app.obj[app.current].sl + num;
             }
@@ -219,22 +318,13 @@
                 case 5: week = "周五"; break
                 case 6: week = "周六"; break
             }
-            date = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + "/" + week + ' ' + (date.getHours() >= 10 ? date.getHours() : '0' + date.getHours()) + ':' + (date.getMinutes() >= 10 ? date.getMinutes() : '0' + date.getMinutes()) + ':' + (date.getSeconds() >= 10 ? date.getSeconds() : '0' + date.getSeconds())
+            // date = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + "/";
+            date = week + ' ' + (date.getHours() >= 10 ? date.getHours() : '0' + date.getHours()) + ':' + (date.getMinutes() >= 10 ? date.getMinutes() : '0' + date.getMinutes()) + ':' + (date.getSeconds() >= 10 ? date.getSeconds() : '0' + date.getSeconds());
 
             return date
         }
-        Array.prototype.shuffle = function () {
-            var arr = this;
-            for (var i = arr.length - 1; i >= 0; i--) {
-                var randomIndex = Math.floor(Math.random() * (i + 1));
-                var itemAtIndex = arr[randomIndex];
 
-                arr[randomIndex] = arr[i];
-                arr[i] = itemAtIndex;
-            }
-            return arr;
-        }
-        document.getElementById("exam1").src = location.href + "exam1.html";
+        document.getElementById("exam").src = location.href + "exam3.html";
 
     </script>
 </body>

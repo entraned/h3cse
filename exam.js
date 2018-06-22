@@ -6,9 +6,8 @@ class Exam {
 
         let index = 0,
             temp = "";
-
         // for (let i = 0; i < this.wrap.childNodes.length; i++) {
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 63; i++) {
             if (this.wrap.childNodes[i].innerHTML ? this.wrap.childNodes[i].innerHTML.replace(/\s/g, "") : this.wrap.childNodes[i].textContent.replace(/\s/g, "")) {
                 //html内容
                 temp += this.wrap.childNodes[i].outerHTML ? this.wrap.childNodes[i].outerHTML : this.wrap.childNodes[i].textContent
@@ -17,7 +16,7 @@ class Exam {
                 this.obj[index].arr = this.obj[index].arr ? this.obj[index].arr : []
                 this.obj[index].arr.push(this.wrap.childNodes[i])
                 //判断节点分割题目
-                if (i + 1 >= this.wrap.childNodes.length || (this.wrap.childNodes[i + 1] && this.wrap.childNodes[i + 1].textContent.indexOf('QUESTION') > -1)) {
+                if (i + 1 >= this.wrap.childNodes.length - 1 || (this.wrap.childNodes[i + 1] && this.wrap.childNodes[i + 1].textContent.indexOf('QUESTION') > -1)) {
                     this.html += temp;
 
                     this.obj[index].html = temp;
@@ -63,6 +62,21 @@ class Exam {
                 score += ((el.sl === el.ans) ? 1 : 0)
             }
         })
-        return score * per;
+        if (per) {
+            return score * per;
+        } else {
+            return score
+        }
     }
+}
+Array.prototype.shuffle = function () {
+    var arr = this;
+    for (var i = arr.length - 1; i >= 0; i--) {
+        var randomIndex = Math.floor(Math.random() * (i + 1));
+        var itemAtIndex = arr[randomIndex];
+
+        arr[randomIndex] = arr[i];
+        arr[i] = itemAtIndex;
+    }
+    return arr;
 }
