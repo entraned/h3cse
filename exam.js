@@ -6,8 +6,8 @@ class Exam {
 
         let index = 0,
             temp = "";
-        // for (let i = 0; i < this.wrap.childNodes.length; i++) {
-        for (let i = 0; i < 63; i++) {
+        for (let i = 0; i < this.wrap.childNodes.length; i++) {
+//         for (let i = 0; i < 63; i++) {
             if (this.wrap.childNodes[i].innerHTML ? this.wrap.childNodes[i].innerHTML.replace(/\s/g, "") : this.wrap.childNodes[i].textContent.replace(/\s/g, "")) {
                 //html内容
                 temp += this.wrap.childNodes[i].outerHTML ? this.wrap.childNodes[i].outerHTML : this.wrap.childNodes[i].textContent
