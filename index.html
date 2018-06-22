@@ -287,9 +287,10 @@
                                     this.op.xAxis[0].data.push(el.time)
                                     this.op.series[0].data.push(el.count)
                                 });
-                                this.op.series[0].markLine.data[0].yAxis = this.obj.length * this.per * 0.6;
+                                this.op.series[0].markLine.data[0].yAxis = this.obj.length * 0.6;
                                 this.op.yAxis[0].max = this.obj.length;
                                 echarts.init(document.getElementById('chart')).setOption(this.op)
+                                console.log(this.op)
                             }
                         });
                     }
