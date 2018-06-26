@@ -7,7 +7,7 @@ class Exam {
         let index = 0,
             temp = "";
         for (let i = 0; i < this.wrap.childNodes.length; i++) {
-//         for (let i = 0; i < 63; i++) {
+            //         for (let i = 0; i < 63; i++) {
             if (this.wrap.childNodes[i].innerHTML ? this.wrap.childNodes[i].innerHTML.replace(/\s/g, "") : this.wrap.childNodes[i].textContent.replace(/\s/g, "")) {
                 //html内容
                 temp += this.wrap.childNodes[i].outerHTML ? this.wrap.childNodes[i].outerHTML : this.wrap.childNodes[i].textContent
@@ -79,4 +79,20 @@ Array.prototype.shuffle = function () {
         arr[i] = itemAtIndex;
     }
     return arr;
+}
+function format(date) {
+    var week = ""
+    switch (date.getDay()) {
+        case 0: week = "周日"; break
+        case 1: week = "周一"; break
+        case 2: week = "周二"; break
+        case 3: week = "周三"; break
+        case 4: week = "周四"; break
+        case 5: week = "周五"; break
+        case 6: week = "周六"; break
+    }
+    // date = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + "/";
+    date = week + ' ' + (date.getHours() >= 10 ? date.getHours() : '0' + date.getHours()) + ':' + (date.getMinutes() >= 10 ? date.getMinutes() : '0' + date.getMinutes()) + ':' + (date.getSeconds() >= 10 ? date.getSeconds() : '0' + date.getSeconds());
+
+    return date
 }

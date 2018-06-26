@@ -13,8 +13,8 @@
         }
 
         .rightAns {
-            box-shadow: 1px 1px 1px 1px #666;
-            border-radius: 3px;
+            background-color: #239a3b;
+            color: #fff;
         }
 
         #app {
@@ -25,6 +25,44 @@
         .buttonWrap {
             text-align: center;
         }
+
+        button {
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            background-color: #239a3b;
+            box-shadow: 1px 1px 2px 2px #ddd;
+            padding: 5px 15px;
+            outline: none;
+        }
+
+        select {
+            border: 1px solid #239a3b;
+            border-radius: 5px;
+            padding: 2px;
+            outline: none;
+        }
+
+        .time {
+            padding: 10px 0;
+            position: relative;
+        }
+
+        .index {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background: #7bc96f;
+            border-radius: 50%;
+            font-size: 12px;
+            text-align: center;
+            color: #fff;
+            line-height: 20px;
+        }
     </style>
 </head>
 
@@ -34,7 +72,7 @@
         <div v-show="scene===0 || scene === 2" id="chart" style="width:100%;height:400px;"></div>
         <div v-show="scene === 0" class="buttonWrap">
             <button @click="random">随机生成考题</button>
-            <button @click="scene = 1">考试</button>
+            <button @click="start">考试</button>
             <select v-if="obj.length >= 50" v-model="range">
                 <option v-for="i in Math.floor(obj.length / 50)" :value="i * 50">{{i * 50}}</option>
                 <option value="obj.length">全部</option>
@@ -50,7 +88,7 @@
             总得分 {{score}}
             <div v-for="(item,index) in obj" v-if="item.sl !== item.ans">
                 <hr>
-                <span>{{item.index}}</span>
+                <span class="index">{{item.index}}</span>
                 <div v-html="item.qes"></div>
                 <div v-for="i in item.options">
                     <div v-html="i.innerHTML" :class="{checked:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,rightAns:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
@@ -59,11 +97,12 @@
             <button @click="reset">重新考试</button>
         </div>
         <template v-if="scene === 1">
-            <div class="buttonWrap">
-                {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time % 60)}}
+            <div class="buttonWrap time">
+                <span class="index">{{current + 1}}</span> {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time %
+                60)}}
             </div>
-            <div v-html="obj[current].qes"></div>
-            <div v-for="i in obj[current].options">
+            <div v-html=" obj[current].qes"></div>
+            <div v-for="(i,index) in obj[current].options">
                 <div v-html="i.innerHTML" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
             </div>
         </template>
@@ -278,11 +317,16 @@
                         let obj = new Exam(document.getElementById("exam").contentWindow.document.body).obj;
                         this.obj = obj.shuffle().splice(0, obj.length >= 50 ? this.range : obj.length);
                     },
+                    start() {
+                        this.scene = 1;
+                        this.interval = this.countDown();
+                    },
                     setChart() {
                         localforage.getItem('analyse').then(val => {
                             if (val) {
                                 this.op.xAxis[0].data = [];
                                 this.op.series[0].data = [];
+                                val = val.slice(0, 10);
                                 val.forEach(el => {
                                     this.op.xAxis[0].data.push(el.time)
                                     this.op.series[0].data.push(el.count)
@@ -298,7 +342,6 @@
                 watch: {
                 },
                 mounted() {
-                    this.interval = this.countDown()
                     this.setChart();
                     console.log(this.obj)
                 }
@@ -309,22 +352,6 @@
                 let index = app.obj[app.current].sl.indexOf(num);
                 app.obj[app.current].sl = index > -1 ? app.obj[app.current].sl.replace(num, '') : app.obj[app.current].sl + num;
             }
-        }
-        function format(date) {
-            var week = ""
-            switch (date.getDay()) {
-                case 0: week = "周日"; break
-                case 1: week = "周一"; break
-                case 2: week = "周二"; break
-                case 3: week = "周三"; break
-                case 4: week = "周四"; break
-                case 5: week = "周五"; break
-                case 6: week = "周六"; break
-            }
-            // date = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + "/";
-            date = week + ' ' + (date.getHours() >= 10 ? date.getHours() : '0' + date.getHours()) + ':' + (date.getMinutes() >= 10 ? date.getMinutes() : '0' + date.getMinutes()) + ':' + (date.getSeconds() >= 10 ? date.getSeconds() : '0' + date.getSeconds());
-
-            return date
         }
 
         document.getElementById("exam").src = location.href + "exam3.html";
