@@ -69,7 +69,7 @@
 <body>
     <div v-cloak id="app">
         <div v-if="isPhone">暂未开发移动端，请至电脑端使用哦</div>
-        <div v-show="scene===0 || scene === 2" id="chart" style="width:100%;height:400px;"></div>
+        <div v-show="hasAnalyse && (scene===0 || scene === 2)" id="chart" style="width:100%;height:400px;"></div>
         <div v-show="scene === 0" class="buttonWrap">
             <button @click="random">随机生成考题</button>
             <button @click="start">考试</button>
@@ -184,6 +184,7 @@
                     per: 20,
                     interval: null,
                     range: 50,
+                    hasAnalyse:false,
                     isPhone: (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i).test(navigator.userAgent),
                     op: {
                         tooltip: {
@@ -324,6 +325,7 @@
                     setChart() {
                         localforage.getItem('analyse').then(val => {
                             if (val) {
+                                this.hasAnalyse=true;
                                 this.op.xAxis[0].data = [];
                                 this.op.series[0].data = [];
                                 val = val.slice(0, 10);
