@@ -119,14 +119,14 @@
                 <option :value="obj.length">全部</option>
                 <option :value="0">自定义</option>
             </select>
-            <input v-if="customRange !== 0" v-model="customRange" v-focus/>
+            <input v-if="customRange !== 0" v-model="customRange" @change="customChange" v-focus/>
         </div>
 
         <!-- 答题完毕 -->
         <div v-if="scene===2" class="buttonWrap">
             总得分 {{score}}
             <button @click="reset">重新考试</button>
-            <button @click="random">随机生成考题</button>
+            <button @click="restart">返回首页</button>
             <button @click="showWrong">查看错题</button>
         </div>
 
@@ -145,12 +145,15 @@
                     <span style="color: red;margin-right: 20px;">错误：{{item.sl}}</span>
                     <span style="color: #239a3b;">正确：{{item.ans}}</span>
                 </div>
-                <div v-else v-for="i in item.options">
-                    <div v-html="i.innerHTML" class="options" :class="{select:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,checked:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
+                <div v-else>
+                    <div v-for="i in item.options">
+                        <div v-html="i.innerHTML" class="options" :class="{select:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,checked:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
+                    </div>
+                    <span style="font-size: 12px;color:#999;">Answer: {{item.ans}}</span>
                 </div>
             </div>
             <div class="buttonWrap">
-                <button @click="reset">重新考试</button>
+                <button @click="restart">返回首页</button>
             </div>
         </div>
 
@@ -170,6 +173,7 @@
         <!-- 答题 -->
         <template v-if="scene === 1">
             <div class="buttonWrap time">
+                <!-- {{obj[current].index}} -->
                 <span class="index">{{current + 1}}</span> {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time %
                 60)}}
             </div>
@@ -179,6 +183,16 @@
                 <div v-html="i.innerHTML" class="options" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
             </div>
         </template>
+        <div v-if="false" v-for="i in obj">
+            <hr>
+            <div style="margin-bottom: 10px;">Q:
+                <span style="color: #239a3b;">{{i.index}}</span>
+            </div>
+            <div v-html=" i.qes"></div>
+            <div v-for="(i,index) in i.options">
+                <div v-html="i.innerHTML" class="options"></div>
+            </div>
+        </div>
     </div>
     <iframe src="" id="exam" onload="loaded()" style="display: none;"></iframe>
     <script src="./exam.js" language="JavaScript"></script>
@@ -221,6 +235,14 @@
                         this.scene = 1;
                         this.interval = this.countDown();
                     },
+                    restart() {
+                        exam = new Exam(document.getElementById("exam").contentWindow.document.body);
+                        this.obj = exam.obj;
+                        this.current = 0;
+                        this.time = 2 * 60 * 60;
+                        this.score = 0;
+                        this.scene = 0;
+                    },
                     showResult() {
                         this.scene = 2;
                         clearInterval(this.interval);
@@ -254,9 +276,9 @@
                         this.scene = 1;
                         this.reset(true);
                         let obj = new Exam(document.getElementById("exam").contentWindow.document.body).obj;
-                        obj = obj.splice(this.s_range, this.e_range)
-                        this.obj = obj.shuffle().splice(0, obj.length >= 50 ? this.customRange !== 0 ? this.customRange : this.range : obj.length);
-
+                        obj = obj.splice(this.s_range, this.e_range);
+                        obj.shuffle();
+                        this.obj = obj.splice(0, this.obj.length >= 50 ? this.customRange !== 0 ? this.customRange : this.range : obj.length);
                     },
                     start() {
                         this.scene = 1;
@@ -293,6 +315,11 @@
                     },
                     handleInput(e) {
                         app.obj[app.current].sl = e.target.value;
+                    },
+                    customChange() {
+                        if (!this.customRange) {
+                            this.range = 50;
+                        }
                     }
                 },
                 watch: {
@@ -301,11 +328,6 @@
                             this.customRange = 50;
                         } else {
                             this.customRange = 0;
-                        }
-                    },
-                    customRange(val) {
-                        if (!val) {
-                            this.range = 50;
                         }
                     },
                     scene() {
@@ -375,6 +397,7 @@
                     break;
                 case (101):
                 case (53):
+                    console.log(111)
                     choose(5, 'E')
                     break;
                 case (102):
