@@ -9,7 +9,7 @@
         }
 
         .checked {
-            background-color: rgb(152, 172, 196);
+            background-color: #98acc4;
         }
 
         .rightAns {
@@ -84,6 +84,16 @@
             border-radius: 0;
             text-align: center;
         }
+
+        .options {
+            margin: 10px 0;
+            padding: 5px;
+            border-radius: 2px;
+        }
+
+        .select {
+            box-shadow: 0px 0px 2px 2px #758496;
+        }
     </style>
 </head>
 
@@ -117,16 +127,26 @@
 
         <!-- 查看错题 -->
         <div v-if="scene===3">
-            总得分 {{score}}
-            <div v-for="(item,index) in obj" v-if="item.sl !== item.ans">
+            <div class="buttonWrap">总得分: {{score}}
+                <button @click="reset">重新考试</button>
+            </div>
+            <div v-for="(item,index) in obj" v-if="item.sl !== item.ans" style="position: relative;">
                 <hr>
-                <span class="index">{{item.index}}</span>
+                <div style="margin-bottom: 10px;">Q:
+                    <span style="color: #239a3b;">{{item.index}}</span>
+                </div>
                 <div v-html="item.qes"></div>
-                <div v-for="i in item.options">
-                    <div v-html="i.innerHTML" :class="{checked:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,rightAns:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
+                <div v-if="item.options.length <= 0" style="text-align: center;font-size: 14px;">
+                    <span style="color: red;margin-right: 20px;">错误：{{item.sl}}</span>
+                    <span style="color: #239a3b;">正确：{{item.ans}}</span>
+                </div>
+                <div v-else v-for="i in item.options">
+                    <div v-html="i.innerHTML" class="options" :class="{select:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,checked:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
                 </div>
             </div>
-            <button @click="reset">重新考试</button>
+            <div class="buttonWrap">
+                <button @click="reset">重新考试</button>
+            </div>
         </div>
 
         <!-- 跳到某题 -->
@@ -138,7 +158,7 @@
             <div v-html="find.qes"></div>
             <input v-if="find.options.length <= 0" v-focus class="inputAns" @change="handleInput" />
             <div v-else v-for="(i,index) in find.options">
-                <div v-html="i.innerHTML" :class="find.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
+                <div v-html="i.innerHTML" class="options" :class="find.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
             </div>
         </div>
 
@@ -151,7 +171,7 @@
             <div v-html=" obj[current].qes"></div>
             <input v-if="obj[current].options.length <= 0" v-focus class="inputAns" @change="handleInput" />
             <div v-else v-for="(i,index) in obj[current].options">
-                <div v-html="i.innerHTML" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
+                <div v-html="i.innerHTML" class="options" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
             </div>
         </template>
     </div>
@@ -197,13 +217,13 @@
                     showResult() {
                         this.scene = 2;
                         clearInterval(this.interval);
-                        this.score = exam.score(this.per);
+                        this.score = exam.score(this.obj,this.per);
                         localforage.getItem('analyse').then(val => {
                             if (val) {
-                                val.push({ time: format(new Date()), score: this.score, count: exam.score() })
+                                val.push({ time: format(new Date()), score: this.score, count: exam.score(this.obj) })
                                 localforage.setItem('analyse', val);
                             } else {
-                                localforage.setItem('analyse', [{ time: format(new Date()), score: this.score, count: exam.score() }]);
+                                localforage.setItem('analyse', [{ time: format(new Date()), score: this.score, count: exam.score(this.obj) }]);
                             }
                         });
                         setTimeout(() => {
@@ -240,7 +260,7 @@
                                 this.hasAnalyse = true;
                                 this.op.xAxis[0].data = [];
                                 this.op.series[0].data = [];
-                                val = val.slice(0, 10);
+                                val = val.slice(-10);
                                 val.forEach(el => {
                                     this.op.xAxis[0].data.push(el.time)
                                     this.op.series[0].data.push(el.count)
@@ -286,6 +306,7 @@
                 },
                 mounted() {
                     this.setChart();
+                    // [this.obj[432], this.obj[0]] = [this.obj[0], this.obj[432]]
                     console.log(this.obj)
                 }
             });

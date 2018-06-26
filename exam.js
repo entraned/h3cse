@@ -55,11 +55,11 @@ class Exam {
         }
         obj.ans = obj.ans.substring(obj.ans.indexOf(': ') + 2, obj.ans.indexOf('Section'));
     }
-    score(per) {
+    score(obj, per) {
         let score = 0;
-        this.obj.forEach((el, index) => {
+        obj.forEach((el, index) => {
             if (el.sl && el.ans) {
-                score += ((el.sl === el.ans) ? 1 : 0)
+                score += ((el.sl == el.ans) ? 1 : 0)
             }
         })
         if (per) {
