@@ -22,6 +22,10 @@
             margin: 0 auto;
         }
 
+        #chart {
+            margin: 0 auto;
+        }
+
         .buttonWrap {
             text-align: center;
         }
@@ -41,6 +45,15 @@
             border-radius: 5px;
             padding: 2px;
             outline: none;
+        }
+
+        input {
+            border-radius: 5px;
+            outline: none;
+            border: 1px solid #239a3b;
+            height: 24px;
+            width: 100px;
+            padding: 0 5px;
         }
 
         .time {
@@ -63,27 +76,46 @@
             color: #fff;
             line-height: 20px;
         }
+
+        .inputAns {
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            border-radius: 0;
+            text-align: center;
+        }
     </style>
 </head>
 
 <body>
     <div v-cloak id="app">
         <div v-if="isPhone">暂未开发移动端，请至电脑端使用哦</div>
-        <div v-show="hasAnalyse && (scene===0 || scene === 2)" id="chart" style="width:100%;height:400px;"></div>
+
+
+        <!-- 统计 -->
+        <div v-show="hasAnalyse && (scene===0 || scene === 2)" id="chart" style="width:500px;height:400px;"></div>
+
+        <!-- 首页 -->
         <div v-show="scene === 0" class="buttonWrap">
             <button @click="random">随机生成考题</button>
             <button @click="start">考试</button>
             <select v-if="obj.length >= 50" v-model="range">
                 <option v-for="i in Math.floor(obj.length / 50)" :value="i * 50">{{i * 50}}</option>
-                <option value="obj.length">全部</option>
+                <option :value="obj.length">全部</option>
+                <option :value="0">自定义</option>
             </select>
+            <input v-if="customRange !== 0" v-model="customRange" v-focus/>
         </div>
+
+        <!-- 答题完毕 -->
         <div v-if="scene===2" class="buttonWrap">
             总得分 {{score}}
             <button @click="reset">重新考试</button>
             <button @click="random">随机生成考题</button>
             <button @click="showWrong">查看错题</button>
         </div>
+
+        <!-- 查看错题 -->
         <div v-if="scene===3">
             总得分 {{score}}
             <div v-for="(item,index) in obj" v-if="item.sl !== item.ans">
@@ -96,13 +128,29 @@
             </div>
             <button @click="reset">重新考试</button>
         </div>
+
+        <!-- 跳到某题 -->
+        <input v-if="false" v-model="finding" @change="handleFind" />
+        <div v-if="scene===4">
+            <div style="position: relative;">
+                <!-- <span class="index">{{find.index}}</span> -->
+            </div>
+            <div v-html="find.qes"></div>
+            <input v-if="find.options.length <= 0" v-focus class="inputAns" @change="handleInput" />
+            <div v-else v-for="(i,index) in find.options">
+                <div v-html="i.innerHTML" :class="find.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
+            </div>
+        </div>
+
+        <!-- 答题 -->
         <template v-if="scene === 1">
             <div class="buttonWrap time">
                 <span class="index">{{current + 1}}</span> {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time %
                 60)}}
             </div>
             <div v-html=" obj[current].qes"></div>
-            <div v-for="(i,index) in obj[current].options">
+            <input v-if="obj[current].options.length <= 0" v-focus class="inputAns" @change="handleInput" />
+            <div v-else v-for="(i,index) in obj[current].options">
                 <div v-html="i.innerHTML" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
             </div>
         </template>
@@ -114,6 +162,143 @@
     <script src="echarts.min.js"></script>
     <script>
         let app, exam;
+        function loaded() {
+            exam = new Exam(document.getElementById("exam").contentWindow.document.body);
+            app = new Vue({
+                el: '#app',
+                data: {
+                    scene: 0,
+                    current: 0,
+                    time: 2 * 60 * 60,
+                    obj: exam.obj,
+                    score: 0,
+                    per: 20,
+                    interval: null,
+                    range: 50,
+                    hasAnalyse: false,
+                    finding: 0,
+                    find: null,
+                    customRange: 0,
+                    isPhone: (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i).test(navigator.userAgent),
+                    op: op
+                },
+                methods: {
+                    reset(random) {
+                        if (random !== true) {
+                            exam = new Exam(document.getElementById("exam").contentWindow.document.body);
+                            this.obj = exam.obj;
+                        }
+                        this.current = 0;
+                        this.time = 2 * 60 * 60;
+                        this.score = 0;
+                        this.scene = 1;
+                        this.interval = this.countDown();
+                    },
+                    showResult() {
+                        this.scene = 2;
+                        clearInterval(this.interval);
+                        this.score = exam.score(this.per);
+                        localforage.getItem('analyse').then(val => {
+                            if (val) {
+                                val.push({ time: format(new Date()), score: this.score, count: exam.score() })
+                                localforage.setItem('analyse', val);
+                            } else {
+                                localforage.setItem('analyse', [{ time: format(new Date()), score: this.score, count: exam.score() }]);
+                            }
+                        });
+                        setTimeout(() => {
+                            this.setChart();
+                        }, 1000);
+                    },
+                    showWrong() {
+                        this.scene = 3;
+                    },
+                    countDown() {
+                        return setInterval(() => {
+                            if (this.time <= 0) {
+                                clearInterval(this.interval);
+                                this.showResult();
+                            } else {
+                                this.time--
+                            }
+                        }, 1000)
+                    },
+                    random() {
+                        this.scene = 1;
+                        this.reset(true);
+                        let obj = new Exam(document.getElementById("exam").contentWindow.document.body).obj;
+                        this.obj = obj.shuffle().splice(0, obj.length >= 50 ? this.customRange !== 0 ? this.customRange : this.range : obj.length);
+                    },
+                    start() {
+                        this.scene = 1;
+                        this.interval = this.countDown();
+                        this.obj = this.obj.splice(0, this.customRange !== 0 ? this.customRange : this.range)
+                    },
+                    setChart() {
+                        localforage.getItem('analyse').then(val => {
+                            if (val) {
+                                this.hasAnalyse = true;
+                                this.op.xAxis[0].data = [];
+                                this.op.series[0].data = [];
+                                val = val.slice(0, 10);
+                                val.forEach(el => {
+                                    this.op.xAxis[0].data.push(el.time)
+                                    this.op.series[0].data.push(el.count)
+                                });
+                                this.op.series[0].markLine.data[0].yAxis = this.obj.length * 0.6;
+                                this.op.yAxis[0].max = this.obj.length;
+                                echarts.init(document.getElementById('chart')).setOption(this.op)
+                                console.log(this.op)
+                            }
+                        });
+                    },
+                    handleFind() {
+                        if (this.finding && this.obj[this.finding]) {
+                            this.scene = 4;
+                            this.find = this.obj[this.finding - 1]
+                            console.log(this.find)
+                        } else {
+                            this.scene = 0;
+                        }
+                    },
+                    handleInput(e) {
+                        app.obj[app.current].sl = e.target.value;
+                    }
+                },
+                watch: {
+                    range(val) {
+                        if (val == 0) {
+                            this.customRange = 50;
+                        } else {
+                            this.customRange = 0;
+                        }
+                    },
+                    scene() {
+                        console.log(this.obj.length)
+                    }
+                },
+                directives: {
+                    focus: {
+                        inserted: function (el) {//自动聚焦
+                            el.focus()
+                        }
+                    }
+                },
+                mounted() {
+                    this.setChart();
+                    console.log(this.obj)
+                }
+            });
+        }
+        function choose(len, num) {
+            if (app.scene === 1 && app.obj[app.current].options && app.obj[app.current].options.length >= len) {
+                let index = app.obj[app.current].sl.indexOf(num);
+                app.obj[app.current].sl = index > -1 ? app.obj[app.current].sl.replace(num, '') : app.obj[app.current].sl + num;
+            }
+        }
+
+        document.getElementById("exam").src = location.href + "exam3.html";
+
         document.onkeyup = function (evt) {
             // console.log(evt.keyCode)
             switch (evt.keyCode) {
@@ -171,193 +356,90 @@
                     break;
             }
         }
-        function loaded() {
-            exam = new Exam(document.getElementById("exam").contentWindow.document.body);
-            app = new Vue({
-                el: '#app',
-                data: {
-                    scene: 0,
-                    current: 0,
-                    time: 2 * 60 * 60,
-                    obj: exam.obj,
-                    score: 0,
-                    per: 20,
-                    interval: null,
-                    range: 50,
-                    hasAnalyse:false,
-                    isPhone: (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i).test(navigator.userAgent),
-                    op: {
-                        tooltip: {
-                            trigger: "axis"
+        let op = {
+            tooltip: {
+                trigger: "axis"
+            },
+            grid: {
+                x: 50
+            },
+            legend: {
+                data: [
+                    "score"
+                ]
+            },
+            xAxis: [
+                {
+                    type: "category",
+                    data: [],
+                    axisLine: {
+                        onZero: false,
+                        show: false
+                    },
+                    axisLabel: {
+                        show: true,
+                        rotate: 30
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    splitLine: {
+                        show: false
+                    },
+                    splitArea: {
+                        show: true
+                    }
+                }
+            ],
+            yAxis: [
+                {
+                    type: "value",
+                    splitLine: {
+                        show: false
+                    },
+                    axisLine: {
+                        show: false
+                    },
+                    splitArea: {
+                        show: false
+                    }
+                }
+            ],
+            series: [
+                {
+                    name: "score",
+                    type: "line",
+                    data: [],
+                    itemStyle: {
+                        normal: {
+                            borderRadius: 10,
+                            color: "rgb(57, 178, 169)"
+                        }
+                    },
+                    markLine: {
+                        symbol: 'circle',
+                        symbolSize: 0,
+                        lineStyle: {
+                            type: 'solid',
+                            color: '#000'
                         },
-                        grid: {
-                            x: 50
-                        },
-                        legend: {
-                            data: [
-                                "score"
-                            ]
-                        },
-                        xAxis: [
+                        animation: false,
+                        data: [
                             {
-                                type: "category",
-                                data: [],
-                                axisLine: {
-                                    onZero: false,
-                                    show: false
-                                },
-                                axisLabel: {
-                                    show: true,
-                                    rotate: 30
-                                },
-                                axisTick: {
-                                    show: false
-                                },
-                                splitLine: {
-                                    show: false
-                                },
-                                splitArea: {
-                                    show: true
-                                }
-                            }
-                        ],
-                        yAxis: [
-                            {
-                                type: "value",
-                                splitLine: {
-                                    show: false
-                                },
-                                axisLine: {
-                                    show: false
-                                },
-                                splitArea: {
-                                    show: false
-                                }
-                            }
-                        ],
-                        series: [
-                            {
-                                name: "score",
-                                type: "line",
-                                data: [],
+                                name: 'required',
                                 itemStyle: {
                                     normal: {
-                                        borderRadius: 10,
-                                        color: "rgb(57, 178, 169)"
+                                        show: true,
+                                        color: '#4c5336'
                                     }
                                 },
-                                markLine: {
-                                    symbol: 'circle',
-                                    symbolSize: 0,
-                                    lineStyle: {
-                                        type: 'solid',
-                                        color: '#000'
-                                    },
-                                    animation: false,
-                                    data: [
-                                        {
-                                            name: 'required',
-                                            itemStyle: {
-                                                normal: {
-                                                    show: true,
-                                                    color: '#4c5336'
-                                                }
-                                            },
-                                            yAxis: 0
-                                        }
-                                    ]
-                                }
+                                yAxis: 0
                             }
                         ]
                     }
-                },
-                methods: {
-                    reset(random) {
-                        if (random !== true) {
-                            exam = new Exam(document.getElementById("exam").contentWindow.document.body);
-                            this.obj = exam.obj;
-                        }
-                        this.current = 0;
-                        this.time = 2 * 60 * 60;
-                        this.score = 0;
-                        this.scene = 1;
-                        this.interval = this.countDown();
-                    },
-                    showResult() {
-                        this.scene = 2;
-                        clearInterval(this.interval);
-                        this.score = exam.score(this.per);
-                        localforage.getItem('analyse').then(val => {
-                            if (val) {
-                                val.push({ time: format(new Date()), score: this.score, count: exam.score() })
-                                localforage.setItem('analyse', val);
-                            } else {
-                                localforage.setItem('analyse', [{ time: format(new Date()), score: this.score, count: exam.score() }]);
-                            }
-                        });
-                        setTimeout(() => {
-                            this.setChart();
-                        }, 1000);
-                    },
-                    showWrong() {
-                        this.scene = 3;
-                    },
-                    countDown() {
-                        return setInterval(() => {
-                            if (this.time <= 0) {
-                                clearInterval(this.interval);
-                                this.showResult();
-                            } else {
-                                this.time--
-                            }
-                        }, 1000)
-                    },
-                    random() {
-                        this.scene = 1;
-                        this.reset(true);
-                        let obj = new Exam(document.getElementById("exam").contentWindow.document.body).obj;
-                        this.obj = obj.shuffle().splice(0, obj.length >= 50 ? this.range : obj.length);
-                    },
-                    start() {
-                        this.scene = 1;
-                        this.interval = this.countDown();
-                    },
-                    setChart() {
-                        localforage.getItem('analyse').then(val => {
-                            if (val) {
-                                this.hasAnalyse=true;
-                                this.op.xAxis[0].data = [];
-                                this.op.series[0].data = [];
-                                val = val.slice(0, 10);
-                                val.forEach(el => {
-                                    this.op.xAxis[0].data.push(el.time)
-                                    this.op.series[0].data.push(el.count)
-                                });
-                                this.op.series[0].markLine.data[0].yAxis = this.obj.length * 0.6;
-                                this.op.yAxis[0].max = this.obj.length;
-                                echarts.init(document.getElementById('chart')).setOption(this.op)
-                                console.log(this.op)
-                            }
-                        });
-                    }
-                },
-                watch: {
-                },
-                mounted() {
-                    this.setChart();
-                    console.log(this.obj)
                 }
-            });
+            ]
         }
-        function choose(len, num) {
-            if (app.scene === 1 && app.obj[app.current].options && app.obj[app.current].options.length >= len) {
-                let index = app.obj[app.current].sl.indexOf(num);
-                app.obj[app.current].sl = index > -1 ? app.obj[app.current].sl.replace(num, '') : app.obj[app.current].sl + num;
-            }
-        }
-
-        document.getElementById("exam").src = location.href + "exam3.html";
-
     </script>
 </body>
 
