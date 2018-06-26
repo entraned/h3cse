@@ -94,6 +94,10 @@
         .select {
             box-shadow: 0px 0px 2px 2px #758496;
         }
+
+        .range {
+            width: 50px;
+        }
     </style>
 </head>
 
@@ -101,16 +105,17 @@
     <div v-cloak id="app">
         <div v-if="isPhone">暂未开发移动端，请至电脑端使用哦</div>
 
-
         <!-- 统计 -->
         <div v-show="hasAnalyse && (scene===0 || scene === 2)" id="chart" style="width:500px;height:400px;"></div>
 
         <!-- 首页 -->
         <div v-show="scene === 0" class="buttonWrap">
+            <input class="range" v-model="s_range" /> -
+            <input class="range" v-model="e_range" />
             <button @click="random">随机生成考题</button>
             <button @click="start">考试</button>
             <select v-if="obj.length >= 50" v-model="range">
-                <option v-for="i in Math.floor(obj.length / 50)" :value="i * 50">{{i * 50}}</option>
+                <option v-for="i in Math.floor(ranges / 50)" :value="i * 50">{{i * 50}}</option>
                 <option :value="obj.length">全部</option>
                 <option :value="0">自定义</option>
             </select>
@@ -199,6 +204,8 @@
                     finding: 0,
                     find: null,
                     customRange: 0,
+                    s_range: 0,
+                    e_range: exam.obj.length,
                     isPhone: (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i).test(navigator.userAgent),
                     op: op
                 },
@@ -217,7 +224,7 @@
                     showResult() {
                         this.scene = 2;
                         clearInterval(this.interval);
-                        this.score = exam.score(this.obj,this.per);
+                        this.score = exam.score(this.obj, this.per);
                         localforage.getItem('analyse').then(val => {
                             if (val) {
                                 val.push({ time: format(new Date()), score: this.score, count: exam.score(this.obj) })
@@ -247,11 +254,14 @@
                         this.scene = 1;
                         this.reset(true);
                         let obj = new Exam(document.getElementById("exam").contentWindow.document.body).obj;
+                        obj = obj.splice(this.s_range, this.e_range)
                         this.obj = obj.shuffle().splice(0, obj.length >= 50 ? this.customRange !== 0 ? this.customRange : this.range : obj.length);
+
                     },
                     start() {
                         this.scene = 1;
                         this.interval = this.countDown();
+                        this.obj = this.obj.splice(this.s_range, this.e_range)
                         this.obj = this.obj.splice(0, this.customRange !== 0 ? this.customRange : this.range)
                     },
                     setChart() {
@@ -293,8 +303,18 @@
                             this.customRange = 0;
                         }
                     },
+                    customRange(val) {
+                        if (!val) {
+                            this.range = 50;
+                        }
+                    },
                     scene() {
                         console.log(this.obj.length)
+                    }
+                },
+                computed: {
+                    ranges() {
+                        return this.e_range - this.s_range
                     }
                 },
                 directives: {
