@@ -139,95 +139,96 @@
 <body>
     <div v-cloak id="app" class="browser-mockup with-url">
         <div v-if="isPhone">暂未开发移动端，请至电脑端使用哦</div>
+        <template v-else>
+            <!-- 统计 -->
+            <div v-show="hasAnalyse && (scene===0 || scene === 2)" id="chart" style="width:500px;height:400px;"></div>
 
-        <!-- 统计 -->
-        <div v-show="hasAnalyse && (scene===0 || scene === 2)" id="chart" style="width:500px;height:400px;"></div>
-
-        <!-- 首页 -->
-        <div v-show="scene === 0" class="buttonWrap">
-            <input class="range" v-model="s_range" /> -
-            <input class="range" v-model="e_range" />
-            <button @click="random">随机生成考题</button>
-            <button @click="start">考试</button>
-            <select v-if="obj.length >= 50" v-model="range">
-                <option v-for="i in Math.floor(ranges / 50)" :value="i * 50">{{i * 50}}</option>
-                <option :value="obj.length">全部</option>
-                <option :value="0">自定义</option>
-            </select>
-            <input v-if="customRange !== 0" v-model="customRange" @change="customChange" v-focus/>
-        </div>
-
-        <!-- 答题完毕 -->
-        <div v-if="scene===2" class="buttonWrap">
-            总得分 {{score}}
-            <button @click="reset">重新考试</button>
-            <button @click="restart">返回首页</button>
-            <button @click="showWrong">查看错题</button>
-        </div>
-
-        <!-- 查看错题 -->
-        <div v-if="scene===3">
-            <div class="buttonWrap">总得分: {{score}}
-                <button @click="reset">重新考试</button>
+            <!-- 首页 -->
+            <div v-show="scene === 0" class="buttonWrap">
+                <input class="range" v-model="s_range" /> -
+                <input class="range" v-model="e_range" />
+                <button @click="random">随机生成考题</button>
+                <button @click="start">考试</button>
+                <select v-if="obj.length >= 50" v-model="range">
+                    <option v-for="i in Math.floor(ranges / 50)" :value="i * 50">{{i * 50}}</option>
+                    <option :value="obj.length">全部</option>
+                    <option :value="0">自定义</option>
+                </select>
+                <input v-if="customRange !== 0" v-model="customRange" @change="customChange" v-focus/>
             </div>
-            <div v-for="(item,index) in obj" v-if="item.sl !== item.ans" style="position: relative;">
+
+            <!-- 答题完毕 -->
+            <div v-if="scene===2" class="buttonWrap">
+                总得分 {{score}}
+                <button @click="reset">重新考试</button>
+                <button @click="restart">返回首页</button>
+                <button @click="showWrong">查看错题</button>
+            </div>
+
+            <!-- 查看错题 -->
+            <div v-if="scene===3">
+                <div class="buttonWrap">总得分: {{score}}
+                    <button @click="reset">重新考试</button>
+                </div>
+                <div v-for="(item,index) in obj" v-if="item.sl !== item.ans" style="position: relative;">
+                    <hr>
+                    <div style="margin-bottom: 10px;">Q:
+                        <span style="color: #239a3b;">{{item.index}}</span>
+                    </div>
+                    <div v-html="item.qes"></div>
+                    <div v-if="item.options.length <= 0" style="text-align: center;font-size: 14px;">
+                        <span style="color: red;margin-right: 20px;">错误：{{item.sl}}</span>
+                        <span style="color: #239a3b;">正确：{{item.ans}}</span>
+                    </div>
+                    <div v-else>
+                        <div v-for="i in item.options">
+                            <div v-html="i.innerHTML" class="options" :class="{select:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,checked:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
+                        </div>
+                        <span style="font-size: 12px;color:#999;">Answer: {{item.ans}}</span>
+                    </div>
+                </div>
+                <div class="buttonWrap">
+                    <button @click="restart">返回首页</button>
+                </div>
+            </div>
+
+            <!-- 跳到某题 -->
+            <input v-if="false" v-model="finding" @change="handleFind" />
+            <div v-if="scene===4">
+                <div style="position: relative;">
+                    <!-- <span class="index">{{find.index}}</span> -->
+                </div>
+                <div v-html="find.qes"></div>
+                <input v-if="find.options.length <= 0" v-focus class="inputAns" @change="handleInput" />
+                <div v-else v-for="(i,index) in find.options">
+                    <div v-html="i.innerHTML" class="options" :class="find.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
+                </div>
+            </div>
+
+            <!-- 答题 -->
+            <template v-if="scene === 1">
+                <div class="buttonWrap time">
+                    <span class="index">{{current + 1}}</span> {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time
+                    % 60)}}
+                    <span class="index" style="right: 0;left: auto;">Q:{{obj[current].index}}</span>
+                </div>
+                <div v-html=" obj[current].qes"></div>
+                <input v-if="obj[current].options.length <= 0" v-focus class="inputAns" @change="handleInput" />
+                <div v-else v-for="(i,index) in obj[current].options">
+                    <div v-html="i.innerHTML" class="options" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
+                </div>
+            </template>
+            <div v-if="false" v-for="i in obj">
                 <hr>
                 <div style="margin-bottom: 10px;">Q:
-                    <span style="color: #239a3b;">{{item.index}}</span>
+                    <span style="color: #239a3b;">{{i.index}}</span>
                 </div>
-                <div v-html="item.qes"></div>
-                <div v-if="item.options.length <= 0" style="text-align: center;font-size: 14px;">
-                    <span style="color: red;margin-right: 20px;">错误：{{item.sl}}</span>
-                    <span style="color: #239a3b;">正确：{{item.ans}}</span>
+                <div v-html=" i.qes"></div>
+                <div v-for="(i,index) in i.options">
+                    <div v-html="i.innerHTML" class="options"></div>
                 </div>
-                <div v-else>
-                    <div v-for="i in item.options">
-                        <div v-html="i.innerHTML" class="options" :class="{select:item.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1,checked:item.ans.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1}"></div>
-                    </div>
-                    <span style="font-size: 12px;color:#999;">Answer: {{item.ans}}</span>
-                </div>
-            </div>
-            <div class="buttonWrap">
-                <button @click="restart">返回首页</button>
-            </div>
-        </div>
-
-        <!-- 跳到某题 -->
-        <input v-if="false" v-model="finding" @change="handleFind" />
-        <div v-if="scene===4">
-            <div style="position: relative;">
-                <!-- <span class="index">{{find.index}}</span> -->
-            </div>
-            <div v-html="find.qes"></div>
-            <input v-if="find.options.length <= 0" v-focus class="inputAns" @change="handleInput" />
-            <div v-else v-for="(i,index) in find.options">
-                <div v-html="i.innerHTML" class="options" :class="find.sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
-            </div>
-        </div>
-
-        <!-- 答题 -->
-        <template v-if="scene === 1">
-            <div class="buttonWrap time">
-                <!-- {{obj[current].index}} -->
-                <span class="index">{{current + 1}}</span> {{Math.floor(time / 60 / 60)}}:{{Math.floor(time / 60 % 60)}}:{{Math.floor(time %
-                60)}}
-            </div>
-            <div v-html=" obj[current].qes"></div>
-            <input v-if="obj[current].options.length <= 0" v-focus class="inputAns" @change="handleInput" />
-            <div v-else v-for="(i,index) in obj[current].options">
-                <div v-html="i.innerHTML" class="options" :class="obj[current].sl.indexOf(i.innerHTML.match(/[A-Z]\./)[0].substring(0,1)) > -1 ? 'checked' : ''"></div>
             </div>
         </template>
-        <div v-if="false" v-for="i in obj">
-            <hr>
-            <div style="margin-bottom: 10px;">Q:
-                <span style="color: #239a3b;">{{i.index}}</span>
-            </div>
-            <div v-html=" i.qes"></div>
-            <div v-for="(i,index) in i.options">
-                <div v-html="i.innerHTML" class="options"></div>
-            </div>
-        </div>
     </div>
     <iframe src="" id="exam" onload="loaded()" style="display: none;"></iframe>
     <script src="./exam.js" language="JavaScript"></script>
